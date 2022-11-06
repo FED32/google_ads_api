@@ -692,6 +692,16 @@ class GAdsEcomru:
                 s.append(f"\t {asset.text} pinned to {asset.pinned_field.name}")
             return s
 
+        def ad_text_assets_to_dicts(assets):
+            """
+            Convert a list of AdTextAssets to a dict
+            """
+            return [{'text': txt.text,
+                     'pinned_field': txt.pinned_field.name,
+                     'asset_performance_label': txt.asset_performance_label.name,
+                     'policy_summary_info_review_status': txt.policy_summary_info.review_status.name}
+                    for txt in assets]
+
         try:
             ga_service = self.client.get_service("GoogleAdsService")
             query = '''
@@ -726,12 +736,14 @@ class GAdsEcomru:
                 print(f"Headlines:\n{headlines}\nDescriptions:\n{descriptions}\n")
                 res.append({'ad_name': ad.resource_name,
                             'ad_group_ad_status_name': row.ad_group_ad.status.name,
-                            'headlines': [{'headline': ww.replace('\t', '').strip().split(' pinned to ')[0],
-                                           'pinned_to': ww.replace('\t', '').strip().split(' pinned to ')[1]}
-                                          for ww in ad_text_assets_to_strs(ad.responsive_search_ad.headlines)],
-                            'descriptions': [{'description': ww.replace('\t', '').strip().split(' pinned to ')[0],
-                                              'pinned_to': ww.replace('\t', '').strip().split(' pinned to ')[1]}
-                                             for ww in ad_text_assets_to_strs(ad.responsive_search_ad.descriptions)]
+                            # 'headlines': [{'headline': ww.replace('\t', '').strip().split(' pinned to ')[0],
+                            #                'pinned_to': ww.replace('\t', '').strip().split(' pinned to ')[1]}
+                            #               for ww in ad_text_assets_to_strs(ad.responsive_search_ad.headlines)],
+                            # 'descriptions': [{'description': ww.replace('\t', '').strip().split(' pinned to ')[0],
+                            #                   'pinned_to': ww.replace('\t', '').strip().split(' pinned to ')[1]}
+                            #                  for ww in ad_text_assets_to_strs(ad.responsive_search_ad.descriptions)],
+                            'headlines': ad_text_assets_to_dicts(ad.responsive_search_ad.headlines),
+                            'descriptions': ad_text_assets_to_dicts(ad.responsive_search_ad.descriptions)
                             })
 
             if not one_found:
@@ -777,6 +789,177 @@ class GAdsEcomru:
                     for field_path_element in error.location.field_path_elements:
                         print(f"\t\tOn field: {field_path_element.field_name}")
             return None
+
+    def get_keyword_statistics(self, customer_id,
+                               date_from,
+                               date_to
+                               ):
+        try:
+            ga_service = self.client.get_service("GoogleAdsService")
+
+            query = f"""SELECT
+                  customer.id,
+                  campaign.id,
+                  campaign.name,
+                  ad_group.id,
+                  ad_group.name,
+                  ad_group_criterion.keyword.text,
+                  ad_group_criterion.negative,
+                  ad_group_criterion.system_serving_status,
+                  ad_group_criterion.approval_status,
+                  ad_group_criterion.keyword.match_type,
+                  ad_group_criterion.final_urls,
+                  bidding_strategy.name,
+                  bidding_strategy.type,
+                  metrics.average_cpm,
+                  metrics.ctr,
+                  metrics.clicks,
+                  metrics.impressions,
+                  metrics.average_cpc,
+                  metrics.cost_per_all_conversions,
+                  metrics.all_conversions,
+                  metrics.all_conversions_value,
+                  metrics.percent_new_visitors,
+                  metrics.all_conversions_value_per_cost,
+                  metrics.bounce_rate,
+                  metrics.active_view_cpm,
+                  metrics.average_cpe,
+                  metrics.average_cpv,
+                  metrics.active_view_ctr,
+                  metrics.average_cost,
+                  metrics.conversions,
+                  metrics.conversions_by_conversion_date,
+                  metrics.average_page_views,
+                  metrics.interaction_rate,
+                  metrics.interactions,
+                  metrics.all_conversions_value_by_conversion_date,
+                  metrics.conversions_value_by_conversion_date,
+                  metrics.all_conversions_from_interactions_value_per_interaction,
+                  metrics.average_time_on_site,
+                  metrics.cost_micros,
+                  metrics.engagement_rate,
+                  metrics.engagements,
+                  metrics.cost_per_conversion,
+                  metrics.all_conversions_by_conversion_date
+                FROM keyword_view
+                WHERE segments.date > '{date_from}' AND segments.date < '{date_to}'
+                AND ad_group_criterion.status != 'REMOVED'
+                ORDER BY metrics.impressions DESC
+                  """
+
+            # Issues a search request using streaming.
+            search_request = self.client.get_type("SearchGoogleAdsStreamRequest")
+            search_request.customer_id = customer_id
+            search_request.query = query
+            stream = ga_service.search_stream(search_request)
+
+            result = []
+            for batch in stream:
+                for row in batch.results:
+                    # segments = row.segments
+                    customer = row.customer
+                    ad_group = row.ad_group
+                    ad_group_criterion = row.ad_group_criterion
+                    campaign = row.campaign
+                    # keyword_view = row.keyword_view
+                    bidding_strategy = row.bidding_strategy
+                    metrics = row.metrics
+
+                    print(row)
+                    result.append({
+                        # 'date': segments.date,
+                        'customer_id': customer.id,
+                        'campaign_id': campaign.id,
+                        'campaign_name': campaign.name,
+                        'ad_group_id': ad_group.id,
+                        'ad_group_name': ad_group.name,
+                        'keyword': ad_group_criterion.keyword.text,
+                        'negative': ad_group_criterion.negative,
+                        'system_serving_status': ad_group_criterion.system_serving_status.name,
+                        'approval_status': ad_group_criterion.approval_status.name,
+                        'match_type': ad_group_criterion.keyword.match_type.name,
+                        'final_urls': [url.name for url in ad_group_criterion.final_urls],
+                        'bidding_strategy_name': bidding_strategy.name,
+                        'bidding_strategy_type': bidding_strategy.type.name,
+                        'average_cpm': metrics.average_cpm,
+                        'ctr': metrics.ctr,
+                        'clicks': metrics.clicks,
+                        'impressions': metrics.impressions,
+                        'average_cpc': metrics.average_cpc,
+                        'cost_per_all_conversions': metrics.cost_per_all_conversions,
+                        'all_conversions': metrics.all_conversions,
+                        'all_conversions_value': metrics.all_conversions_value,
+                        'percent_new_visitors': metrics.percent_new_visitors,
+                        'all_conversions_value_per_cost': metrics.all_conversions_value_per_cost,
+                        'bounce_rate': metrics.bounce_rate,
+                        'active_view_cpm': metrics.active_view_cpm,
+                        'average_cpe': metrics.average_cpe,
+                        'average_cpv': metrics.average_cpv,
+                        'active_view_ctr': metrics.active_view_ctr,
+                        'average_cost': metrics.average_cost,
+                        'conversions': metrics.conversions,
+                        'conversions_by_conversion_date': metrics.conversions_by_conversion_date,
+                        'average_page_views': metrics.average_page_views,
+                        'interaction_rate': metrics.interaction_rate,
+                        'interactions': metrics.interactions,
+                        'all_conversions_value_by_conversion_date': metrics.all_conversions_value_by_conversion_date,
+                        'conversions_value_by_conversion_date': metrics.conversions_value_by_conversion_date,
+                        'all_conversions_from_interactions_value_per_interaction':
+                            metrics.all_conversions_from_interactions_value_per_interaction,
+                        'average_time_on_site': metrics.average_time_on_site,
+                        'cost_micros': metrics.cost_micros,
+                        'engagement_rate': metrics.engagement_rate,
+                        'engagements': metrics.engagements,
+                        'cost_per_conversion': metrics.cost_per_conversion,
+                        'all_conversions_by_conversion_date': metrics.all_conversions_by_conversion_date
+                    })
+
+            return result
+
+        except GoogleAdsException as ex:
+            print(f'Request with ID "{ex.request_id}" failed with status '
+                  f'"{ex.error.code().name}" and includes the following errors:')
+            for error in ex.failure.errors:
+                print(f'\tError with message "{error.message}".')
+                if error.location:
+                    for field_path_element in error.location.field_path_elements:
+                        print(f"\t\tOn field: {field_path_element.field_name}")
+            return None
+
+    def get_campaign_statistics(self, customer_id,
+                                date_from,
+                                date_to
+                                ):
+        ga_service = self.client.get_service("GoogleAdsService")
+
+        query = f"""
+                SELECT
+                campaign.name,
+                metrics.clicks,
+                segments.date
+                FROM campaign
+                WHERE segments.date > '{date_from}'
+                    AND segments.date < '{date_to}'
+                """
+
+        search_request = self.client.get_type("SearchGoogleAdsStreamRequest")
+        search_request.customer_id = customer_id
+        search_request.query = query
+        stream = ga_service.search_stream(search_request)
+
+        result = []
+        for batch in stream:
+            for row in batch.results:
+                campaign = row.campaign
+                metrics = row.metrics
+                segments = row.segments
+                result.append({
+                    'date': segments.date,
+                    'name': campaign.name,
+                    'clicks': metrics.clicks
+                })
+
+        return result
 
 
 
