@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  gads:
+    build: .
+    restart: always
+    container_name: gads
+    environment:
+      TZ: Europe/Moscow
+#      ECOMRU_PG_DB_NAME: ${ECOMRU_PG_DB_NAME}
+#      ECOMRU_PG_HOST: ${ECOMRU_PG_HOST}
+#      ECOMRU_PG_PORT: ${ECOMRU_PG_PORT}
+#      ECOMRU_PG_USER: ${ECOMRU_PG_USER}
+#      ECOMRU_PG_PASSWORD: ${ECOMRU_PG_PASSWORD}
+#      ECOMRU_PG_SSL_MODE: ${ECOMRU_PG_SSL_MODE}
+    volumes:
+      - /home/get/logs_all//GAds/:/app/logs/
+
+  nginx:
+    container_name: nginx-gads
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    depends_on:
+      - gads
+    restart: always
+    environment:
+      - "TZ=Europe/Moscow"
+    ports:
+#      - 8091:80
+#      - 4441:443
+    volumes:
+      - /home/get/cert:/app/cert
+
