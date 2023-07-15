@@ -1,0 +1,53 @@
+swagger: "2.0"
+info:
+  title: "Google Ads API Documentation"
+  contact:
+    email: "s.fedyushin@gtcom.io"
+  basePath: "/swagger"
+paths:
+  "/googleads/getadgroups":
+    post:
+tags:
+  - adgroups
+summary: "Получить группы"
+description: "Метод для получения групп и их параметров"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+parameters:
+- in: "body"
+  name: "body"
+  required: true
+  schema:
+    type: "object"
+    properties:
+      login_customer_id:
+        type: "string"
+        example: "8294188123"
+        description: id управляющего аккаунта
+      refresh_token:
+        type: "string"
+        example: "1//0chwFOAVorOM4CgYIARAAGAwSNwF-L9Ir7xm7yNH6nhKfSCJQQ04_17BrkWhu3tTzuhcFWfCUEzj3PKYvqONKv8g-yZgIfA6m4m8"
+        description: Токен обновления OAuth2
+      customer_id:
+        type: "string"
+        example: "2200886572"
+        description: id клиента
+      show_removed:
+        type: "string"
+        example: "false"
+        enum:
+          - "false"
+          - "true"
+        description: Показать удаленные кампании (не обязательно)
+      campaign_id:
+        type: "integer"
+        example: 18874726008
+        description: id кампании (не обязательно)
+responses:
+  200:
+    description: "OK"
+  400:
+    description: "Bad Request"
+

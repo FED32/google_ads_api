@@ -1,0 +1,22 @@
+swagger: "2.0"
+info:
+  title: "Google Ads API Documentation"
+  contact:
+    email: "s.fedyushin@ecomru.ru"
+  basePath: "/swagger"
+paths:
+  "/googleads/auth":
+    get:
+tags:
+  - accounts
+summary: "Получить ссылку для авторизации"
+description: "Метод для генерации ссылки для авторизации пользователя и предоставления доступа сервису к аккаунту. https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=660722585949-478ao09befcevaosv1ot311so9dt5575.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Flk.ecomru.ru%2F&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&state=rZxkwJqk4aF6v5JHW0wiLgFBz6CG0x&access_type=offline&prompt=consent&include_granted_scopes=true"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+responses:
+  200:
+    description: "OK"
+  400:
+    description: "Bad Request"
